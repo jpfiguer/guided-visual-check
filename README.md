@@ -63,9 +63,12 @@ should say so in `policy.py` rather than anywhere else.
 This is the one that is easiest to skip and most expensive to get wrong.
 
 Vision-language models are weak at metric questions — orientation, angles, exact
-counts, distances. Published evaluations put general VLMs near the floor on
-"which way is this object facing" while humans sit near the ceiling. The failure
-is quiet: the model does not refuse, it returns a confident number.
+counts, distances. On the DORI benchmark, which isolates object orientation as
+the thing being tested, the best evaluated model reaches **64.2% on coarse
+orientation judgements and 42.9% on granular ones** — and the gap between those
+two is the tell: the models are leaning on categorical shortcuts, not geometry
+([arXiv:2505.21649](https://arxiv.org/abs/2505.21649)). The failure is quiet.
+The model does not refuse; it returns a confident number.
 
 So anything with a closed form is computed by something that computes — a pose
 estimator, an inclinometer, an EXIF field, a database lookup — and handed over

@@ -4,9 +4,12 @@ This is the second load-bearing idea, and the one that is easiest to skip.
 
 Vision-language models are strong at describing a scene and weak at a specific
 family of questions: metric ones. "Which way is this object facing", "what angle
-is this at", "how many degrees off vertical" — published evaluations put general
-VLMs near the floor on orientation tasks while humans sit near the ceiling. The
-failure is quiet. The model does not refuse; it produces a confident number.
+is this at", "how many degrees off vertical". On the DORI benchmark, which
+isolates orientation as the thing under test, the best evaluated model reaches
+64.2% on coarse orientation judgements and 42.9% on granular ones — and that gap
+is the tell, because it means the model is matching categories rather than
+reasoning about geometry (arXiv:2505.21649). The failure is quiet: the model
+does not refuse; it produces a confident number.
 
 So anything with a closed form is computed by something that computes, and
 handed to the model as a given, with an explicit instruction not to re-derive it
