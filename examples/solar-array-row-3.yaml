@@ -1,0 +1,36 @@
+# A checkpoint from a domain deliberately unlike retail, to show the pattern is
+# not about shelves. The point of interest is `tilt_angle_deg`: a check that
+# depends on a number nobody should ask a vision model for.
+id: solar-array-row-3
+site: Tarapaca PV plant, block B
+vantage: >
+  Standing at the north end of row 3, camera at chest height, facing south along
+  the row. The first four modules fill the frame.
+reference_image: images/reference.jpg
+notes: >
+  Commissioning reference, taken after the row passed manual inspection.
+
+checks:
+  - id: module-tilt
+    rule: >
+      All modules in frame sit at the design tilt of 25 degrees, within a 2 degree
+      tolerance.
+    # The whole reason this file exists. Tilt is measured by an inclinometer or
+    # derived geometrically, and handed to the model as a fact. If it does not
+    # arrive, this check comes back not_assessable instead of a confident guess.
+    requires_measured: tilt_angle_deg
+
+  - id: surface-soiling
+    rule: >
+      Module surfaces are free of heavy soiling, bird droppings or sand
+      accumulation covering more than roughly a tenth of any single module.
+
+  - id: cable-management
+    rule: >
+      DC cabling is clipped to the rail and off the ground. No cable hangs loose
+      or rests in the dirt.
+
+  - id: visible-damage
+    rule: >
+      No cracked glass, delamination, burn marks or bent frames on any module in
+      frame.
