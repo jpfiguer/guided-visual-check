@@ -1,7 +1,6 @@
-"""guided-visual-check — reference-guided visual inspection where the model
-reports evidence and the code decides.
+"""Reference-guided visual inspection: the model reports evidence, the code decides.
 
-See README.md for the four design decisions this package exists to demonstrate.
+README.md describes the design.
 """
 
 from .checkpoint import Check, Checkpoint

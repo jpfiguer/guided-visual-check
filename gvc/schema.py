@@ -1,13 +1,7 @@
 """What the model returns, and what the code adds afterwards.
 
-The split in this file is the whole idea: `Evaluation` and `Finding` are
-**evidence** — what the model saw, and how sure it is. Nothing in them is a
-decision. `ResolvedFinding` is what comes out the other side, after the policy
-in `policy.py` has turned that evidence into an action.
-
-Keeping the two apart is what makes the system auditable. When someone asks
-"why was this flagged?", the answer is a threshold in readable code, not a
-sentence buried in a prompt that may or may not have been followed.
+`Evaluation` and `Finding` hold what the model reported: evidence, with no
+decision in it. `ResolvedFinding` and `Result` add what the code decided.
 """
 
 from __future__ import annotations
@@ -20,9 +14,8 @@ from pydantic import BaseModel, Field, field_validator
 class Status(str, Enum):
     """The three outcomes a single check can have.
 
-    `not_assessable` is not a failure mode, it is a first-class answer. A model
-    that cannot see the thing it was asked about should say so rather than
-    guess, and the policy routes that to a human.
+    `not_assessable` means the check could not be judged from the image and the
+    measured inputs. The policy sends it to human review.
     """
 
     pass_ = "pass"
@@ -46,18 +39,17 @@ class Finding(BaseModel):
     @field_validator("confidence")
     @classmethod
     def _clamp(cls, v: float) -> float:
-        """Clamp instead of rejecting.
+        """Clamp to [0, 1] instead of rejecting.
 
-        Structured-output schemas do not enforce numeric bounds, so the range is
-        imposed here. It clamps rather than raising on purpose: a 1.02 coming
-        back from a model means "very sure", and throwing away the whole
-        evaluation over it would be worse than reading it that way.
+        Structured outputs do not support numeric bounds, so the range is
+        applied here. Clamping keeps one out-of-range value, such as 1.02, from
+        discarding the whole evaluation.
         """
         return max(0.0, min(1.0, float(v)))
 
 
 class Evaluation(BaseModel):
-    """The model's complete output for one image. Still no policy applied."""
+    """The model's complete output for one image, before any rule or policy."""
 
     image_usable: bool = Field(
         description="false when the image does not allow assessment: blurred, badly "

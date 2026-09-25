@@ -1,11 +1,8 @@
-"""The call to the model, what it costs, and the guarantees applied around it.
+"""The call to the model, what it costs, and the rules applied to its answer.
 
-Everything here is arranged so that the parts that must not drift — the policy,
-the missing-measurement rule — are enforced by code on the way out, not only
-requested in the prompt on the way in. The doctrine asks the model to report
-`not_assessable` when a measured input is missing; `_enforce_measured` makes it
-true whether or not the model complied. Defence in depth, because a prompt
-instruction is a request and this is a guarantee.
+`Evaluator.evaluate` makes one call per image. `_resolve` then matches the
+findings to the checkpoint's checks, overrides checks whose measured input is
+missing, drops every finding when the image is unusable, and applies the policy.
 """
 
 from __future__ import annotations
@@ -22,10 +19,7 @@ from .policy import Policy
 from .prompt import DOCTRINE, OUTPUT_SCHEMA, build_message
 from .schema import Evaluation, Finding, Result, Status, Usage
 
-#: Read from the environment rather than hardcoded: which model to use is a
-#: decision to revisit as new labelled data arrives, and revisiting it should
-#: not require a deploy. Pick it by measurement on your own images, not by
-#: reputation — a cheaper model that ties on your data is the right model.
+#: Model id, from the GVC_MODEL environment variable. It needs a row in PRICES.
 DEFAULT_MODEL = os.environ.get("GVC_MODEL", "claude-sonnet-5")
 
 #: USD per million tokens (input, output).
@@ -63,12 +57,8 @@ def estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
 
 
 def actual_cost(model: str, usage) -> float:
-    """Real cost from a usage object, including the two cache rates.
-
-    Writing to cache costs about 1.25x the input rate; reading from it about
-    0.10x. Ignoring the split makes cached runs look more expensive than they
-    are and hides the thing you are optimising.
-    """
+    """Cost of one call from its usage: cache writes at 1.25x the input rate,
+    cache reads at 0.10x."""
     price_in, price_out = _prices(model)
     written = getattr(usage, "cache_creation_input_tokens", 0) or 0
     read = getattr(usage, "cache_read_input_tokens", 0) or 0
@@ -150,9 +140,8 @@ class Evaluator:
         findings = _align_to_checks(checkpoint, evaluation.findings)
         findings = _enforce_measured(checkpoint, findings, measured)
 
-        # Rule 5 as a guarantee, not a request: an unusable image yields no
-        # findings at all. Reporting failures from an image the model itself
-        # called unusable is how a system starts blaming people for bad photos.
+        # Rule 5 of the doctrine, applied whatever the model returned: an
+        # unusable image yields no findings.
         resolved = [] if not evaluation.image_usable else self.policy.resolve_all(findings)
 
         return Result(
@@ -225,12 +214,8 @@ def _align_to_checks(checkpoint: Checkpoint, findings: list[Finding]) -> list[Fi
 def _enforce_measured(
     checkpoint: Checkpoint, findings: list[Finding], measured: dict[str, str]
 ) -> list[Finding]:
-    """Force `not_assessable` on checks whose measured input never arrived.
-
-    The prompt already asks for this. This makes it so. A model that answers
-    confidently about an angle it was not given has not broken any hard rule of
-    the API — it has just done the thing this whole design exists to prevent.
-    """
+    """Force `not_assessable` on checks whose measured input is missing,
+    whatever the model answered for them."""
     required = {c.id: c.requires_measured for c in checkpoint.checks}
     out: list[Finding] = []
     for finding in findings:

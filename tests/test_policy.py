@@ -1,4 +1,4 @@
-"""The policy is the product. These tests are the specification of it."""
+"""Policy.resolve(): the action for each status and confidence."""
 
 import pytest
 
@@ -24,11 +24,10 @@ def test_confident_failure_is_reported():
 
 
 def test_unconfident_failure_never_reaches_the_subject():
-    """The single most important behaviour in this package.
+    """A fail below the threshold goes to human review instead of the subject.
 
-    A suspected failure the model is unsure about must not be reported as a
-    failure. If this test ever goes green with needs_human_review False, the
-    system has started accusing people on a hunch.
+    If this test fails because needs_human_review is False, low-confidence
+    failures are being reported to the subject.
     """
     r = Policy().resolve(finding(Status.fail, 0.5))
     assert r.needs_human_review is True
@@ -41,8 +40,7 @@ def test_not_assessable_always_goes_to_a_human_however_confident():
 
 
 def test_unconfident_pass_is_also_reviewed():
-    """Asymmetry has a cost and this is it: low-confidence passes are misses
-    waiting to happen, so they are surfaced too."""
+    """A pass the model is unsure of may hide a failure, so it is reviewed too."""
     r = Policy().resolve(finding(Status.pass_, 0.4))
     assert r.needs_human_review is True
 
@@ -60,8 +58,7 @@ def test_threshold_is_the_tuning_knob(threshold, expected_review):
 
 
 def test_evidence_survives_resolution():
-    """Applying policy must not destroy what the model said. Otherwise a human
-    reviewing the queue has nothing to review."""
+    """Resolution keeps the model's evidence, so a reviewer can see what it reported."""
     f = finding(Status.fail, 0.5)
     r = Policy().resolve(f)
     assert (r.observed, r.expected, r.locator, r.confidence) == (

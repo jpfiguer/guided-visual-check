@@ -1,4 +1,4 @@
-"""Command line: `dry-run` before you spend, `evaluate` when you mean it."""
+"""Command line: `dry-run` estimates the cost without calling the API; `evaluate` calls it."""
 
 from __future__ import annotations
 

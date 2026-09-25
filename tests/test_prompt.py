@@ -1,4 +1,4 @@
-"""Block order is a cost decision, so it gets a test like any other behaviour."""
+"""Request construction: block order, cache breakpoints and prompt text."""
 
 from pathlib import Path
 
@@ -24,8 +24,7 @@ def message():
 
 
 def test_reference_image_precedes_the_last_cache_breakpoint():
-    """If the reference ends up after the final breakpoint it is re-billed on
-    every call, which is the exact cost this ordering exists to avoid."""
+    """The reference image sits inside the cached prefix."""
     blocks = message()
     ref_index = next(i for i, b in enumerate(blocks) if b["type"] == "image")
     last_cached = max(i for i, b in enumerate(blocks) if "cache_control" in b)
@@ -33,8 +32,7 @@ def test_reference_image_precedes_the_last_cache_breakpoint():
 
 
 def test_the_reference_image_block_carries_its_own_breakpoint():
-    """The README says the cached prefix ends at the reference image, not only
-    after the rules."""
+    """The reference image has its own breakpoint, besides the one on the rules."""
     blocks = message()
     reference = next(b for b in blocks if b["type"] == "image")
     assert reference.get("cache_control") == {"type": "ephemeral"}
@@ -48,7 +46,7 @@ def test_subject_image_comes_after_every_breakpoint():
     assert subject_index > last_cached
 
 
-def test_measured_inputs_are_sorted_so_the_cache_is_stable():
+def test_measured_inputs_are_listed_in_sorted_order():
     a = measured_text({"b": "2", "a": "1"})
     b = measured_text({"a": "1", "b": "2"})
     assert a == b

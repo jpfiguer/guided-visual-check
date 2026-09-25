@@ -1,7 +1,7 @@
-"""Generates the two sample images so the example runs with no assets and no API key.
+"""Generates the two synthetic sample images used by the example checkpoint.
 
-Synthetic on purpose: the repository should be clonable and runnable in one
-command, and nobody's real site photos belong in a public repo.
+The subject image differs from the reference in the third module: it leans
+and has a patch of dirt.
 """
 
 from pathlib import Path

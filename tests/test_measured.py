@@ -1,8 +1,7 @@
-"""The missing-measurement guarantee, tested from both ends.
+"""The missing-measurement rule.
 
 The prompt asks the model to report not_assessable when a measured input is
-missing. These tests cover the case where it does not comply, which is the case
-that matters.
+missing. These tests cover the model answering anyway.
 """
 
 from pathlib import Path
@@ -32,8 +31,8 @@ def finding(check, status=Status.pass_, confidence=0.98):
 
 
 def test_a_confident_answer_about_a_missing_measurement_is_overridden():
-    """The failure mode this exists to stop: the model answers about an angle it
-    was never given, confidently, and nothing in the API objects."""
+    """The model answers confidently about an angle it was never given; the
+    answer is replaced with not_assessable."""
     out = _enforce_measured(CHECKPOINT, [finding("tilt")], measured={})
     assert out[0].status is Status.not_assessable
     assert out[0].confidence == 0.0
@@ -64,8 +63,8 @@ def test_measured_names_are_deduplicated_and_ordered():
 
 
 def test_a_measurer_returning_none_is_not_an_error():
-    """An inclinometer that cannot get a reading is a normal Tuesday. It must
-    produce a gap, which becomes not_assessable, not an exception."""
+    """A measurer with no reading returns None: the value is reported missing,
+    and nothing raises."""
     registry = MeasuredInputs()
     registry.register("tilt_angle_deg", lambda _: None)
     values = registry.collect(["tilt_angle_deg"], Path("x.jpg"))

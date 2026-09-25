@@ -1,18 +1,7 @@
 """A checkpoint: one fixed vantage point, its reference image, and its checks.
 
-The unit of work is not "an image". It is a **fixed place you photograph from,
-with a reference image taken from that same place**. That constraint is what
-separates this from asking a model whether a picture looks right:
-
-  - With a reference from the same angle, the question becomes "what changed",
-    which is a comparison.
-  - Without one, the question is "does this look correct", which is an opinion,
-    and the model will happily produce one.
-
-Published work on anomaly detection puts the gap at roughly six points of
-accuracy from a single reference image. The practical gap is larger, because
-without a reference there is no shared definition of correct to argue with when
-someone disputes a finding.
+Photos evaluated against a checkpoint are taken from the same place as its
+reference image, and each check is judged by comparing the two.
 """
 
 from __future__ import annotations
@@ -42,7 +31,7 @@ class Checkpoint(BaseModel):
     """A fixed vantage point and everything needed to evaluate an image from it."""
 
     id: str
-    site: str = Field(description="which installation, store, site or unit this belongs to")
+    site: str = Field(description="which installation, site or unit this belongs to")
     vantage: str = Field(description="what this checkpoint looks at, so a person can stand there")
     reference_image: Path = Field(description="the image that defines correct, from this vantage")
     checks: list[Check]

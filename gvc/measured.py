@@ -1,25 +1,8 @@
-"""Measured inputs: facts the model is told, never asked for.
+"""Measured inputs: values computed outside the model and given to it as facts.
 
-This is the second load-bearing idea, and the one that is easiest to skip.
-
-Vision-language models are strong at describing a scene and weak at a specific
-family of questions: metric ones. "Which way is this object facing", "what angle
-is this at", "how many degrees off vertical". On the DORI benchmark, which
-isolates orientation as the thing under test, the best evaluated model reaches
-64.2% on coarse orientation judgements and 42.9% on granular ones — and that gap
-is the tell, because it means the model is matching categories rather than
-reasoning about geometry (arXiv:2505.21649). The failure is quiet: the model
-does not refuse; it produces a confident number.
-
-So anything with a closed form is computed by something that computes, and
-handed to the model as a given, with an explicit instruction not to re-derive it
-from the image. A pose estimator, an inclinometer reading, an EXIF field, a
-lookup in a database — the source does not matter, only that it is not the
-language model.
-
-The part that makes it safe is the fallback: when a declared measurement is
-missing, the check that depends on it is reported `not_assessable`. It is not
-silently evaluated from the picture. A gap in the data has to look like a gap.
+A check that declares `requires_measured` depends on one of these values. When
+the value is missing, the evaluator reports that check as not_assessable.
+README.md (decision 3) explains why these quantities are not asked of the model.
 """
 
 from __future__ import annotations
@@ -44,10 +27,10 @@ class MeasuredInputs:
     def collect(self, names: list[str], image: Path) -> dict[str, str]:
         """Run the measurers for `names`, skipping the ones with no value.
 
-        Names with no registered measurer are skipped too. That is intentional:
-        a checkpoint may declare a measurement this deployment cannot take, and
-        the right outcome is a not_assessable check, not a crash. Values are
-        converted with str(), so a measurer can return a float.
+        Names with no registered measurer are skipped too, so a checkpoint can
+        declare a measurement this deployment cannot take; the check that needs
+        it is then reported not_assessable. Values are converted with str(), so
+        a measurer can return a float.
         """
         values: dict[str, str] = {}
         for name in names:

@@ -1,6 +1,6 @@
-# A checkpoint from a domain deliberately unlike retail, to show the pattern is
-# not about shelves. The point of interest is `tilt_angle_deg`: a check that
-# depends on a number nobody should ask a vision model for.
+# Sample checkpoint: a row of solar modules. `module-tilt` depends on the
+# measured input `tilt_angle_deg`; with no measurer registered it is reported
+# not_assessable.
 id: solar-array-row-3
 site: Tarapaca PV plant, block B
 vantage: >
@@ -15,9 +15,8 @@ checks:
     rule: >
       All modules in frame sit at the design tilt of 25 degrees, within a 2 degree
       tolerance.
-    # The whole reason this file exists. Tilt is measured by an inclinometer or
-    # derived geometrically, and handed to the model as a fact. If it does not
-    # arrive, this check comes back not_assessable instead of a confident guess.
+    # Tilt comes from an inclinometer or a geometric calculation and is passed
+    # to the model as a fact. Without it, this check is reported not_assessable.
     requires_measured: tilt_angle_deg
 
   - id: surface-soiling

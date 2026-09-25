@@ -1,20 +1,9 @@
-"""Building the request, and the block order that makes caching work.
+"""The system prompt (DOCTRINE), the output schema, and the user message.
 
-Two things live here and they are easy to confuse. The **doctrine** is what the
-model is told about how to behave. The **block order** is a cost decision.
-
-On order: the stable material goes first — the reference image and the rules for
-this checkpoint, which do not change between visits — and the volatile material
-last, the image being evaluated. Cache breakpoints sit at the end of the stable
-part.
-
-The breakpoint behind the reference image, and not only after the rules, is
-there for a reason that only shows up at scale: once a single image is evaluated
-across several calls (one per group of checks, to keep each call small), the
-rules differ between those calls. A cache that only broke after the rules would
-never hit, and the reference image — the expensive block — would be paid for in
-full every time. Breaking behind it means the six or eight calls for one image
-read it from cache.
+`build_message` puts the reference image and the checkpoint's rules first, each
+with a cache breakpoint, then the measured inputs and the subject image.
+`Evaluator.evaluate` sends it in one call per image. README.md explains the
+order.
 """
 
 from __future__ import annotations
@@ -44,7 +33,7 @@ is not there destroys trust in the system. When in doubt, use status \
 INPUTS, answer "not_assessable" with low confidence and say the value is \
 missing. Never derive it from the image.
 
-4. MEASURED INPUTS ARE FACTS. They come from sensors or specialised models. You \
+4. MEASURED INPUTS ARE FACTS. They come from sensors or specialized models. You \
 do not question or recompute them by looking at the image; you use them to \
 compare against the rule.
 
@@ -128,11 +117,10 @@ def measured_text(values: dict[str, str]) -> str:
     lines = [
         "MEASURED INPUTS",
         "",
-        "These come from sensors or specialised models. They are facts:",
+        "These come from sensors or specialized models. They are facts:",
         "",
     ]
-    # Stable order on purpose: varying it between calls would break the cache
-    # for no reason at all.
+    # Sorted, so the same values always produce the same text.
     for key in sorted(values):
         lines.append(f"- {key}: {values[key]}")
     return "\n".join(lines)
