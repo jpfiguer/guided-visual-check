@@ -9,6 +9,7 @@ import pytest
 from gvc import evaluator
 from gvc.checkpoint import Check, Checkpoint
 from gvc.evaluator import EvaluationError, Evaluator, estimate_cost
+from gvc.schema import Status
 
 EXAMPLES = Path(__file__).resolve().parents[1] / "examples" / "images"
 SUBJECT = EXAMPLES / "subject.jpg"
@@ -71,6 +72,43 @@ def test_a_complete_response_is_resolved(api):
     result = evaluate()
     assert [f.check for f in result.findings] == ["soiling", "cabling"]
     assert api.requests[0]["max_tokens"] == evaluator.MAX_TOKENS
+
+
+def test_a_finding_for_a_check_that_does_not_exist_is_dropped(api):
+    """A confident failure on an invented id must not be reported to anyone."""
+    api.reply = reply([finding("soiling"), finding("cabling"), finding("invented", "fail", 0.99)])
+    result = evaluate()
+    assert [f.check for f in result.findings] == ["soiling", "cabling"]
+    assert all(f.status is Status.pass_ for f in result.findings)
+
+
+def test_a_check_with_no_finding_goes_to_human_review(api):
+    api.reply = reply([finding("soiling")])
+    cabling = evaluate().findings[1]
+    assert cabling.check == "cabling"
+    assert cabling.status is Status.not_assessable
+    assert cabling.needs_human_review is True
+    assert "no finding" in cabling.observed
+
+
+def test_a_check_reported_twice_goes_to_human_review_with_both_reports(api):
+    api.reply = reply([
+        finding("soiling", "pass", 0.90),
+        finding("soiling", "fail", 0.99),
+        finding("cabling"),
+    ])
+    result = evaluate()
+    soiling = result.findings[0]
+    assert len(result.findings) == 2
+    assert soiling.status is Status.not_assessable
+    assert soiling.needs_human_review is True
+    assert "pass (0.90)" in soiling.observed
+    assert "fail (0.99)" in soiling.observed
+
+
+def test_findings_follow_the_checkpoint_order(api):
+    api.reply = reply([finding("cabling"), finding("soiling")])
+    assert [f.check for f in evaluate().findings] == ["soiling", "cabling"]
 
 
 def test_a_refusal_raises_a_clear_error(api):

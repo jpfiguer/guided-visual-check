@@ -20,7 +20,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class Check(BaseModel):
@@ -47,6 +47,16 @@ class Checkpoint(BaseModel):
     reference_image: Path = Field(description="the image that defines correct, from this vantage")
     checks: list[Check]
     notes: str = ""
+
+    @field_validator("checks")
+    @classmethod
+    def _unique_ids(cls, checks: list[Check]) -> list[Check]:
+        """Findings are matched to checks by id, so ids must not repeat."""
+        ids = [check.id for check in checks]
+        repeated = sorted({i for i in ids if ids.count(i) > 1})
+        if repeated:
+            raise ValueError(f"check ids must be unique; repeated: {', '.join(repeated)}")
+        return checks
 
     @classmethod
     def load(cls, path: str | Path) -> "Checkpoint":

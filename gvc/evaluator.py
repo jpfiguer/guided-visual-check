@@ -142,7 +142,8 @@ class Evaluator:
         return reference, subject, measured, missing
 
     def _resolve(self, checkpoint, evaluation, subject, measured, usage) -> Result:
-        findings = _enforce_measured(checkpoint, evaluation.findings, measured)
+        findings = _align_to_checks(checkpoint, evaluation.findings)
+        findings = _enforce_measured(checkpoint, findings, measured)
 
         # Rule 5 as a guarantee, not a request: an unusable image yields no
         # findings at all. Reporting failures from an image the model itself
@@ -166,6 +167,54 @@ class Evaluator:
                 cost_usd=actual_cost(self.model, usage),
             ),
         )
+
+
+def _align_to_checks(checkpoint: Checkpoint, findings: list[Finding]) -> list[Finding]:
+    """Return exactly one finding per check in the checkpoint, in checkpoint order.
+
+    - A finding whose id is not a check of the checkpoint is dropped.
+    - A check with no finding becomes not_assessable.
+    - A check with more than one finding becomes not_assessable. Every reported
+      status, confidence and observation is kept in `observed` for the reviewer.
+
+    The policy sends every not_assessable finding to human review.
+    """
+    reported: dict[str, list[Finding]] = {check.id: [] for check in checkpoint.checks}
+    for finding in findings:
+        if finding.check in reported:
+            reported[finding.check].append(finding)
+
+    aligned: list[Finding] = []
+    for check in checkpoint.checks:
+        matches = reported[check.id]
+        if len(matches) == 1:
+            aligned.append(matches[0])
+        elif not matches:
+            aligned.append(
+                Finding(
+                    check=check.id,
+                    status=Status.not_assessable,
+                    observed="the model returned no finding for this check",
+                    expected=check.rule,
+                    confidence=0.0,
+                    locator="",
+                )
+            )
+        else:
+            reports = "; ".join(
+                f"{m.status.value} ({m.confidence:.2f}): {m.observed}" for m in matches
+            )
+            aligned.append(
+                matches[0].model_copy(
+                    update={
+                        "status": Status.not_assessable,
+                        "confidence": 0.0,
+                        "observed": f"the model returned {len(matches)} findings "
+                        f"for this check: {reports}",
+                    }
+                )
+            )
+    return aligned
 
 
 def _enforce_measured(

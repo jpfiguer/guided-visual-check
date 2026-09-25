@@ -44,6 +44,14 @@ So `Finding` carries status and confidence and nothing else. `Policy.resolve()`
 in [`gvc/policy.py`](gvc/policy.py) is the entire decision layer, and it is
 twenty lines you can read in one sitting.
 
+Before the policy runs, the findings are matched to the checkpoint, so the
+result has exactly one finding per check, in checkpoint order, whatever the
+model returned. A finding for an id that is not in the checkpoint is dropped.
+A check with no finding, or with more than one, becomes `not_assessable` and
+goes to human review; for a repeated check, every reported status and
+observation is kept for the reviewer. This is `_align_to_checks` in
+[`gvc/evaluator.py`](gvc/evaluator.py).
+
 ### 2. A false positive costs more than a false negative
 
 Not a universal truth — a domain assumption, written down where it can be
