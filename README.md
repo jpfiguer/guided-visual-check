@@ -77,7 +77,7 @@ place to encode it.
 Object orientation is a weak spot for vision-language models. On the DORI
 benchmark, built to test orientation on its own, the best evaluated model
 reaches **64.2% on coarse orientation judgments and 42.9% on granular ones**
-([arXiv:2505.21649](https://arxiv.org/abs/2505.21649)). The paper measures
+([arXiv:2505.21649v8](https://arxiv.org/abs/2505.21649v8)). The paper measures
 orientation; applying the same rule to angles, counts and distances is a
 design choice of this repository.
 
