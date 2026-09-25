@@ -5,7 +5,7 @@ See README.md for the four design decisions this package exists to demonstrate.
 """
 
 from .checkpoint import Check, Checkpoint
-from .evaluator import Evaluator
+from .evaluator import EvaluationError, Evaluator
 from .measured import MeasuredInputs
 from .policy import Policy
 from .schema import Evaluation, Finding, ResolvedFinding, Result, Status
@@ -14,6 +14,7 @@ __all__ = [
     "Check",
     "Checkpoint",
     "Evaluation",
+    "EvaluationError",
     "Evaluator",
     "Finding",
     "MeasuredInputs",

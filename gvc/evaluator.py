@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .checkpoint import Checkpoint
-from .image import PreparedImage, prepare
+from .image import prepare
 from .measured import MeasuredInputs
 from .policy import Policy
 from .prompt import DOCTRINE, OUTPUT_SCHEMA, build_message
@@ -35,9 +35,27 @@ PRICES = {
     "claude-haiku-4-5": (1.0, 5.0),
 }
 
+#: Output token limit for one call. On models that think by default, thinking
+#: tokens count toward it.
+MAX_TOKENS = 16_000
+
+
+class EvaluationError(RuntimeError):
+    """The model's response cannot be turned into an evaluation."""
+
+
+def _prices(model: str) -> tuple[float, float]:
+    try:
+        return PRICES[model]
+    except KeyError:
+        known = ", ".join(sorted(PRICES))
+        raise ValueError(
+            f"no prices for model {model!r} (known: {known}); add it to PRICES in gvc/evaluator.py"
+        ) from None
+
 
 def estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
-    price_in, price_out = PRICES.get(model, PRICES["claude-sonnet-5"])
+    price_in, price_out = _prices(model)
     return (input_tokens * price_in + output_tokens * price_out) / 1_000_000
 
 
@@ -48,7 +66,7 @@ def actual_cost(model: str, usage) -> float:
     0.10x. Ignoring the split makes cached runs look more expensive than they
     are and hides the thing you are optimising.
     """
-    price_in, price_out = PRICES.get(model, PRICES["claude-sonnet-5"])
+    price_in, price_out = _prices(model)
     written = getattr(usage, "cache_creation_input_tokens", 0) or 0
     read = getattr(usage, "cache_read_input_tokens", 0) or 0
     return (
@@ -93,7 +111,7 @@ class Evaluator:
         }
 
     def evaluate(self, checkpoint: Checkpoint, image_path: str | Path) -> Result:
-        import anthropic
+        _prices(self.model)  # an unpriced model fails here, before the paid call
 
         reference, subject, measured, _ = self._prepare(checkpoint, image_path)
         content = build_message(checkpoint, reference, subject, measured)
@@ -101,11 +119,12 @@ class Evaluator:
         client = _client()
         response = client.messages.create(
             model=self.model,
-            max_tokens=4096,
+            max_tokens=MAX_TOKENS,
             system=DOCTRINE,
             messages=[{"role": "user", "content": content}],
             output_config={"format": {"type": "json_schema", "schema": OUTPUT_SCHEMA}},
         )
+        _check_stop_reason(response)
         raw = json.loads(_first_text(response))
         evaluation = Evaluation.model_validate(raw)
         return self._resolve(checkpoint, evaluation, subject, measured, response.usage)
@@ -186,16 +205,32 @@ def _client():
     if _shared_client is None:
         import anthropic
 
-        headers = {}
-        workspace = os.environ.get("ANTHROPIC_WORKSPACE_ID", "").strip()
-        if workspace:
-            headers["anthropic-workspace-id"] = workspace
-        _shared_client = anthropic.Anthropic(default_headers=headers or None)
+        _shared_client = anthropic.Anthropic()
     return _shared_client
+
+
+def _check_stop_reason(response) -> None:
+    """Raise unless the model finished its answer normally.
+
+    A refusal or a response cut at max_tokens can carry partial or no JSON, so
+    it is rejected before parsing.
+    """
+    reason = response.stop_reason
+    if reason == "end_turn":
+        return
+    if reason == "refusal":
+        category = getattr(getattr(response, "stop_details", None), "category", None)
+        detail = f" (category: {category})" if category else ""
+        raise EvaluationError(f"the model declined to evaluate this image{detail}")
+    if reason == "max_tokens":
+        raise EvaluationError(
+            f"the response reached max_tokens={MAX_TOKENS} before the JSON was complete"
+        )
+    raise EvaluationError(f"unexpected stop_reason: {reason!r}")
 
 
 def _first_text(response) -> str:
     for block in response.content:
         if getattr(block, "type", None) == "text":
             return block.text
-    raise ValueError("the model returned no text block")
+    raise EvaluationError("the model returned no text block")
