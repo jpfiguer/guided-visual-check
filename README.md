@@ -109,20 +109,31 @@ python -m gvc.cli dry-run \
 ```
 
 ```
-Note: no measurer registered for tilt_angle_deg.
-Checks depending on it will be reported not_assessable.
 {
   "checkpoint": "solar-array-row-3",
+  "model": "claude-sonnet-5",
   "checks": 4,
   "vision_tokens": 1610,
-  "estimated_cost_usd": 0.008666,
-  "missing_measurements": ["tilt_angle_deg"]
+  "estimated_input_tokens": 2651,
+  "estimated_output_tokens": 480,
+  "estimated_cost_usd": 0.010102,
+  "measured_inputs": {},
+  "missing_measurements": [
+    "tilt_angle_deg"
+  ]
 }
+
+Note: no measurer registered for tilt_angle_deg.
+Checks depending on it will be reported not_assessable.
 ```
 
-`dry-run` exists for its own sake. Being able to answer *what will this cost*
-before spending anything changes how willing people are to try things, and it
-catches a malformed checkpoint without burning a call.
+`dry-run` does everything except the API call: it prepares both images,
+collects the measured inputs and estimates the cost, so a malformed checkpoint
+fails before anything is spent. Vision tokens use the image formula below. The
+text (system prompt, output schema and message) is estimated at four
+characters per token and the output at 120 tokens per check, so the figures
+are approximate; `evaluate` reports the real usage. The output estimate leaves
+out thinking tokens, which models that think by default bill as output.
 
 To evaluate for real:
 

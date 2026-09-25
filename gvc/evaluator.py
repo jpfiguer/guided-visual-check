@@ -39,6 +39,9 @@ PRICES = {
 #: tokens count toward it.
 MAX_TOKENS = 16_000
 
+#: Rough characters per token, used only by the dry-run estimate for text.
+CHARS_PER_TOKEN = 4
+
 
 class EvaluationError(RuntimeError):
     """The model's response cannot be turned into an evaluation."""
@@ -89,13 +92,15 @@ class Evaluator:
     def dry_run(self, checkpoint: Checkpoint, image_path: str | Path) -> dict:
         """Everything except the API call: what would be sent, and what it would cost.
 
-        Worth having for its own sake. Being able to answer "what will this run
-        cost" before spending anything changes how willing people are to try
-        things, and it catches a malformed checkpoint without burning a call.
+        Vision tokens use the formula in image.py. Text (the system prompt, the
+        output schema and the message) is estimated at CHARS_PER_TOKEN
+        characters per token. `evaluate` reports the real usage.
         """
         reference, subject, measured, missing = self._prepare(checkpoint, image_path)
         content = build_message(checkpoint, reference, subject, measured)
-        text_tokens = sum(len(b.get("text", "")) for b in content if b["type"] == "text") // 4
+        texts = [DOCTRINE, json.dumps(OUTPUT_SCHEMA)]
+        texts += [block["text"] for block in content if block["type"] == "text"]
+        text_tokens = sum(len(text) for text in texts) // CHARS_PER_TOKEN
         input_tokens = reference.vision_tokens + subject.vision_tokens + text_tokens
         output_tokens = 120 * max(1, len(checkpoint.checks))
         return {

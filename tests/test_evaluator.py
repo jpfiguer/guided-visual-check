@@ -10,6 +10,7 @@ from gvc import evaluator
 from gvc.checkpoint import Check, Checkpoint
 from gvc.evaluator import EvaluationError, Evaluator, estimate_cost
 from gvc.measured import MeasuredInputs
+from gvc.prompt import DOCTRINE, OUTPUT_SCHEMA
 from gvc.schema import Status
 
 EXAMPLES = Path(__file__).resolve().parents[1] / "examples" / "images"
@@ -145,6 +146,12 @@ def test_an_unknown_model_fails_before_the_call(api):
     with pytest.raises(ValueError, match="no prices"):
         Evaluator(model="claude-unknown").evaluate(CHECKPOINT, SUBJECT)
     assert api.requests == []
+
+
+def test_dry_run_counts_the_system_prompt_and_the_output_schema():
+    estimate = Evaluator(model="claude-sonnet-5").dry_run(CHECKPOINT, SUBJECT)
+    text_tokens = estimate["estimated_input_tokens"] - estimate["vision_tokens"]
+    assert text_tokens > (len(DOCTRINE) + len(json.dumps(OUTPUT_SCHEMA))) // 4
 
 
 def test_cost_estimates_reject_unknown_models():
