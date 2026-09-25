@@ -32,6 +32,14 @@ def test_reference_image_precedes_the_last_cache_breakpoint():
     assert ref_index <= last_cached
 
 
+def test_the_reference_image_block_carries_its_own_breakpoint():
+    """The README says the cached prefix ends at the reference image, not only
+    after the rules."""
+    blocks = message()
+    reference = next(b for b in blocks if b["type"] == "image")
+    assert reference.get("cache_control") == {"type": "ephemeral"}
+
+
 def test_subject_image_comes_after_every_breakpoint():
     """The volatile part must never sit inside the cached prefix."""
     blocks = message()

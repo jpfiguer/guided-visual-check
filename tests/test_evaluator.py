@@ -76,6 +76,15 @@ def test_a_complete_response_is_resolved(api):
     assert api.requests[0]["max_tokens"] == evaluator.MAX_TOKENS
 
 
+def test_an_unusable_image_yields_no_findings(api):
+    """Even a confident failure is withheld when the model calls the image unusable."""
+    api.reply = reply([finding("soiling", "fail", 0.99), finding("cabling")], image_usable=False)
+    result = evaluate()
+    assert result.image_usable is False
+    assert result.unusable_reason == "too dark"
+    assert result.findings == []
+
+
 def test_a_finding_for_a_check_that_does_not_exist_is_dropped(api):
     """A confident failure on an invented id must not be reported to anyone."""
     api.reply = reply([finding("soiling"), finding("cabling"), finding("invented", "fail", 0.99)])
