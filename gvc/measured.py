@@ -28,8 +28,8 @@ from collections.abc import Callable
 from pathlib import Path
 
 #: A measurer takes the image being evaluated and returns a value, or None when
-#: it cannot produce one. Returning None is a legitimate outcome, not an error.
-Measurer = Callable[[Path], str | None]
+#: it has no reading. The value reaches the model as text, through str().
+Measurer = Callable[[Path], object]
 
 
 class MeasuredInputs:
@@ -46,7 +46,8 @@ class MeasuredInputs:
 
         Names with no registered measurer are skipped too. That is intentional:
         a checkpoint may declare a measurement this deployment cannot take, and
-        the right outcome is a not_assessable check, not a crash.
+        the right outcome is a not_assessable check, not a crash. Values are
+        converted with str(), so a measurer can return a float.
         """
         values: dict[str, str] = {}
         for name in names:
@@ -55,7 +56,7 @@ class MeasuredInputs:
                 continue
             value = measurer(image)
             if value is not None:
-                values[name] = value
+                values[name] = str(value)
         return values
 
     def missing(self, names: list[str], values: dict[str, str]) -> list[str]:

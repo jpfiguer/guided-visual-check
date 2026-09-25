@@ -73,6 +73,12 @@ def test_a_measurer_returning_none_is_not_an_error():
     assert registry.missing(["tilt_angle_deg"], values) == ["tilt_angle_deg"]
 
 
+def test_a_numeric_reading_is_passed_on_as_text():
+    registry = MeasuredInputs()
+    registry.register("tilt_angle_deg", lambda _: 24.6)
+    assert registry.collect(["tilt_angle_deg"], Path("x.jpg")) == {"tilt_angle_deg": "24.6"}
+
+
 def test_an_unregistered_measurer_is_skipped_not_raised():
     registry = MeasuredInputs()
     assert registry.collect(["nothing_registered"], Path("x.jpg")) == {}

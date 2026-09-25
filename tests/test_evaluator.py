@@ -9,6 +9,7 @@ import pytest
 from gvc import evaluator
 from gvc.checkpoint import Check, Checkpoint
 from gvc.evaluator import EvaluationError, Evaluator, estimate_cost
+from gvc.measured import MeasuredInputs
 from gvc.schema import Status
 
 EXAMPLES = Path(__file__).resolve().parents[1] / "examples" / "images"
@@ -109,6 +110,20 @@ def test_a_check_reported_twice_goes_to_human_review_with_both_reports(api):
 def test_findings_follow_the_checkpoint_order(api):
     api.reply = reply([finding("cabling"), finding("soiling")])
     assert [f.check for f in evaluate().findings] == ["soiling", "cabling"]
+
+
+def test_a_numeric_measurement_reaches_the_result(api):
+    """The result is built after the paid call, so a float must not break it."""
+    checkpoint = Checkpoint(
+        id="cp2", site="site", vantage="v", reference_image=EXAMPLES / "reference.jpg",
+        checks=[Check(id="tilt", rule="25 degrees", requires_measured="tilt_angle_deg")],
+    )
+    measured = MeasuredInputs()
+    measured.register("tilt_angle_deg", lambda _: 24.6)
+    api.reply = reply([finding("tilt")])
+    result = evaluate(checkpoint, measured_inputs=measured)
+    assert result.measured_inputs == {"tilt_angle_deg": "24.6"}
+    assert result.findings[0].status is Status.pass_
 
 
 def test_a_refusal_raises_a_clear_error(api):

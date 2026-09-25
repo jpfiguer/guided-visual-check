@@ -61,11 +61,13 @@ class Checkpoint(BaseModel):
     @classmethod
     def load(cls, path: str | Path) -> "Checkpoint":
         path = Path(path)
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         # Reference images are written relative to the checkpoint file so a
         # checkpoint directory can be moved or copied without editing paths.
-        ref = Path(data["reference_image"])
-        if not ref.is_absolute():
+        # A missing or malformed value is left to model_validate, which reports
+        # it as a validation error.
+        ref = data.get("reference_image") if isinstance(data, dict) else None
+        if isinstance(ref, str) and not Path(ref).is_absolute():
             data["reference_image"] = (path.parent / ref).resolve()
         return cls.model_validate(data)
 
