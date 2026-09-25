@@ -102,7 +102,7 @@ handled as a capture problem instead of a failure of the thing inspected.
 
 ## Try it
 
-Runs without an API key:
+Requires Python 3.11+. The dry run needs no API key:
 
 ```bash
 pip install -e ".[dev]"
@@ -221,7 +221,9 @@ cached tokens at the full input rate would overstate what cached runs cost.
 python -m pytest -q
 ```
 
-The tests do not call the API: `evaluate` runs against a stub client. Good
+CI runs the same command on Python 3.11
+([`.github/workflows/ci.yml`](.github/workflows/ci.yml)). The tests do not
+call the API: `evaluate` runs against a stub client. Good
 places to start are [`test_policy.py`](tests/test_policy.py), for what happens
 to a low-confidence failure, [`test_measured.py`](tests/test_measured.py), for
 a confident answer about a measurement the model never received, and
